@@ -37,8 +37,15 @@ ui <- fluidPage(
 server <- function(input, output) {
   #Create the sample datafame that will hold the financial data
   
-  company_data <- data.frame("num_customers" = c(7,9), "new_customers"=1:2, "new_claims" = c(0,1),"days"=(1:2))
-  print(company_data)
+#company_data <- data.frame("num_customers" = c(7,9), "new_customers"=1:2, "new_claims" = c(0,1),"week"=(1:2))
+week=(1:2)
+total_customers=(4:5)
+new_claims=c(5,9)
+company_data=data.frame(week,total_customers,new_claims)
+
+
+
+    print(company_data)
   
   output$distPlot <- renderPlot({
     # generate bins based on input$bins from ui.R
@@ -47,7 +54,7 @@ server <- function(input, output) {
     
     # draw the histogram with the specified number of bins
     #hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    ggplot(company_data, aes(x=days,y=num_customers))+geom_line()
+    ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
   })
 }
 
