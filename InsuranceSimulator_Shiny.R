@@ -1,11 +1,3 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
 
 library(shiny)
 library(ggplot2)
@@ -49,27 +41,42 @@ fluidRow(column(12, tableOutput("table"))), #end fluid row
  )# end fluidrow
  
 )#end fluid page
+
+
 #**************************Server **********************************************
-
-
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-  #Create the sample datafame that will hold the financial data
+#  https://stackoverflow.com/questions/68405253/r-shiny-variable-increases-by-1-each-time-actionbutton-is-clicked
+#create the reactive value object.
+rv=reactiveValues( company_df=data.frame("num_customers" = c(7,9), "new_customers"=1:2, "new_claims" = c(0,1),"week"=(1:2),
+                        policy_df=data.frame("week"=0,"num_customers"=0),
+                        claims_df=data.frame("week"=0,"num_claims"=0,"avg_claim"=0))
+                        )#end reactive values
+#Do the work with the reactive value when the button is pushed
 
-  output$table <- renderTable(iris)  
-#company_data <- data.frame("num_customers" = c(7,9), "new_customers"=1:2, "new_claims" = c(0,1),"week"=(1:2))
-current_week=1
-  week=(1:2)
-total_customers=(4:5)
-new_claims=c(5,9)
-company_data=data.frame(week,total_customers,new_claims)
+#Advance the cycle one week
+observeEvent(input$add_week, {
+  rv$company_df=rv$company_df+1
+  rv$policy_df=rv$policy_df+1
+  rv$claims_df=rv$claims_df+1
+}) # End observeEvent
 
 
+#rv$company_data<- data.frame("num_customers" = c(7,9), "new_customers"=1:2, "new_claims" = c(0,1),"week"=(1:2))
+#observeEvent(input$add_week,{react_values$week=react_values$week+1})
+  
 
+
+policy_data=data.frame("week"=0,"customer_id" =0, "annual_premium"=0 )
+#output$table <- renderTable(iris)  
+#output$table=renderTable(policy_data)
     print(company_data)
   
-#Policy plot is total number policy holders and policy price history.
 
+output$table=renderTable(rv$policy_df)
+
+    
+#Policy plot is total number policy holders and policy price history.
   output$policy_plot <- renderPlot({
     # generate bins based on input$bins from ui.R
     x    <- faithful[, 2]
@@ -77,11 +84,11 @@ company_data=data.frame(week,total_customers,new_claims)
     
     # draw the histogram with the specified number of bins
     #hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
+    #ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
+    ggplot(rv$policy_df, aes(x=week,y=num_customers))+geom_line()
   })
   
   #Claims output is number of claims in week and average value of those claims.
-  
   output$claims_plot <- renderPlot({
     # generate bins based on input$bins from ui.R
     x    <- faithful[, 2]
@@ -89,7 +96,10 @@ company_data=data.frame(week,total_customers,new_claims)
     
     # draw the histogram with the specified number of bins
     #hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
+    #plot(rv$company_df$week,rv$company_df$num_customers)
+    
+    #ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
+    ggplot(rv$company_df, aes(x=week,y=num_customers))+geom_line()
   })
   
   #This shows the financial data
@@ -117,8 +127,7 @@ company_data=data.frame(week,total_customers,new_claims)
     ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
   })
   
-    
-}
+} #End Server
 
 
 # Run the application 
