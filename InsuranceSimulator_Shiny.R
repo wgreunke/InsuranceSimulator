@@ -48,15 +48,21 @@ fluidRow(column(12, tableOutput("table"))), #end fluid row
 server <- function(input, output) {
 #  https://stackoverflow.com/questions/68405253/r-shiny-variable-increases-by-1-each-time-actionbutton-is-clicked
 
-#Variables
+#Variables - Policy
 target_policy_price=600 #This is what the customer is willing to pay, it has to be discovered
 displayed_price = 601 #What price is advertised to customer.  Will be controlled by user.
-num_shopping_customers=10 #How many customers are shopping for a policy?
+num_customers_shopping=10 #How many customers are shopping for a policy?
+
+#Variables - Claims
+avg_claim_amount=1000
+
+
+
 
 
 #create the reactive value object
 rv=reactiveValues( company_df=data.frame("num_customers" = c(7,9), "new_customers"=1:2, "new_claims" = c(0,1),"week"=(1:2)),
-                        policy_df=data.frame("week"=0,"num_customers"=0),
+                        policy_df=data.frame("week"=0,"policy_price"=0,"new_customers_added"=0,"total_customers"=0),
                         claims_df=data.frame("week"=0,"num_claims"=0,"avg_claim"=0),
                         current_week=0
                         )#end reactive values
@@ -65,18 +71,26 @@ rv=reactiveValues( company_df=data.frame("num_customers" = c(7,9), "new_customer
 #Advance the cycle one week
 observeEvent(input$add_week, {
   rv$current_week=rv$current_week+1
-  rv$policy_df=rv$policy_df+1
-  #shop for policy
-  if (displayed_price<target_policy_price+20)
+  #rv$policy_df=rv$policy_df+1
+
+  #shop for policy, only buy if less than target.
+  #Add a loop to get mulitple customers in a week.
+  if (displayed_price<rnorm(1,target_policy_price,100)) #Create a normal distribution about the target price.
   {
     #Buy the policy, add a row
-    new_customer=c(rv$current_week,1)
-    cbind(rv$current_week,new_customer)
+    temp_total_customers=sum(rv$policy_df$new_customers_added)+1 #adding one for the new row
+    new_customer=c(rv$current_week,displayed_price,1,temp_total_customers)
+    rv$policy_df=rbind(rv$policy_df,new_customer)
   }#End if
   
   
+  #Submit Claims
+  
+  
+  
+  
   rv$company_df=rv$company_df+1
-  rv$claims_df=rv$claims_df+1
+  #rv$claims_df=rv$claims_df+1
 }) # End observeEvent
 
 
@@ -96,7 +110,7 @@ output$table=renderTable(rv$policy_df)
     # draw the histogram with the specified number of bins
     #hist(x, breaks = bins, col = 'darkgray', border = 'white')
     #ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
-    ggplot(rv$policy_df, aes(x=week,y=num_customers))+geom_line()
+    ggplot(rv$policy_df, aes(x=week,y=new_customers_added))+geom_line()
   })
   
   #Claims output is number of claims in week and average value of those claims.
