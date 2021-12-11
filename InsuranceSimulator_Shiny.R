@@ -50,7 +50,7 @@ server <- function(input, output) {
 
 #Variables - Policy
 target_policy_price=600 #This is what the customer is willing to pay, it has to be discovered
-displayed_price = 601 #What price is advertised to customer.  Will be controlled by user.
+displayed_price = 600 #What price is advertised to customer.  Will be controlled by user.
 num_customers_shopping=10 #How many customers are shopping for a policy?
 
 #Variables - Claims
@@ -61,9 +61,9 @@ claim_rate=1
 
 
 #create the reactive value object
-rv=reactiveValues( company_df=data.frame("num_customers" = c(7,9), "new_customers"=1:2, "new_claims" = c(0,1),"week"=(1:2)),
+rv=reactiveValues( company_df=data.frame("week"=0, "dwp_received" = 0, "claims_paid"=0, "cash_balance" =0),
                   policy_df=data.frame("week"=0,"policy_price"=0,"new_customers_added"=0,"total_customers"=0),
-                  claims_df=data.frame("week"=0,"num_claims"=0,"avg_claim"=0),
+                  claims_df=data.frame("week"=0,"num_claims"=0,"avg_claim"=0,"total_claim_amount"=0),
                   current_week=0
                   )#end reactive values
 
@@ -75,23 +75,33 @@ observeEvent(input$add_week, {
 
   #shop for policy, only buy if less than target.
   #Add a loop to get mulitple customers in a week.
+  temp_total_customers=sum(rv$policy_df$new_customers_added)
+  temp_customers_to_add=0
+  
   if (displayed_price<rnorm(1,target_policy_price,100)) #Create a normal distribution about the target price.
   {
     #Buy the policy, add a row
-    temp_total_customers=sum(rv$policy_df$new_customers_added)+1 #adding one for the new row
-    new_customer=c(rv$current_week,displayed_price,1,temp_total_customers)
-    rv$policy_df=rbind(rv$policy_df,new_customer)
+    temp_customers_to_add=1
   }#End if
+  #Add a row for the week even if you have no new customers.
+  new_customer_row=c(rv$current_week,displayed_price,temp_customers_to_add,(temp_total_customers+temp_customers_to_add))
+  rv$policy_df=rbind(rv$policy_df,new_customer_row)
   
   
   #Claims
   #For each week, multiply the claimrate /52 times # of customers
   #Record a random average claim amount.
-  temp_num_claims=rv$policy_df[rv$current_week,"total_customers"]*rnorm(1,claim_rate,600)/52
-  temp_new_claim_row=c(rv$current_week,temp_num_claims,rnorm(1,avg_claim_amount,100))
-  browser()
-  rv$company_df=rv$company_df+1
-  #rv$claims_df=rv$claims_df+1
+  temp_num_claims=as.integer(abs(rv$policy_df[rv$current_week,"total_customers"]*(rnorm(1,claim_rate,600)/52)))  # 600 is a lot of claims, need to bring it down when go live.
+  temp_avg_claim_amount=rnorm(1,avg_claim_amount,100)
+  temp_new_claim_row=c(rv$current_week,temp_num_claims,temp_avg_claim_amount,temp_num_claims*temp_avg_claim_amount)
+  rv$claims_df=rbind(rv$claims_df,temp_new_claim_row)
+  #rv$company_df=rv$company_df+1
+  
+  #Financials
+  #DWP for the week - claims = surpluss
+#  temp_financial_row=(rv$week,rv$policy)
+  
+  
 }) # End observeEvent
 
 
@@ -101,14 +111,13 @@ observeEvent(input$add_week, {
 
 #output$table=renderTable(rv$company_df)
 output$table=renderTable(rv$policy_df)
-    
+#output$table=renderTable(rv$claims_df)
+#output$table=renderTable(rv$company_df)
+
 #Policy plot is total number policy holders and policy price history
   output$policy_plot <- renderPlot({
-    # generate bins based on input$bins from ui.R
-    x    <- faithful[, 2]
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    
-    ggplot(rv$policy_df, aes(x=week,y=new_customers_added))+geom_line()
+  
+    ggplot(rv$policy_df, aes(x=week,y=total_customers))+geom_line()
   })
   
   #Claims output is number of claims in week and average value of those claims.
