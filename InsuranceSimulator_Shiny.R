@@ -16,7 +16,7 @@ ui <- fluidPage(
                        value = 30),  
            #Start off with higher price to get some customers
            numericInput("monthly_price", "Monthly Policy Price:", 1000),
-           actionButton("add_week", "Advance the simulation one week"),
+           actionButton("add_week", "Advance the simulation one week")
   ),
   
 #dump the data table for testing
@@ -55,17 +55,17 @@ num_customers_shopping=10 #How many customers are shopping for a policy?
 
 #Variables - Claims
 avg_claim_amount=1000
-
+claim_rate=1
 
 
 
 
 #create the reactive value object
 rv=reactiveValues( company_df=data.frame("num_customers" = c(7,9), "new_customers"=1:2, "new_claims" = c(0,1),"week"=(1:2)),
-                        policy_df=data.frame("week"=0,"policy_price"=0,"new_customers_added"=0,"total_customers"=0),
-                        claims_df=data.frame("week"=0,"num_claims"=0,"avg_claim"=0),
-                        current_week=0
-                        )#end reactive values
+                  policy_df=data.frame("week"=0,"policy_price"=0,"new_customers_added"=0,"total_customers"=0),
+                  claims_df=data.frame("week"=0,"num_claims"=0,"avg_claim"=0),
+                  current_week=0
+                  )#end reactive values
 
 #Do the work with the reactive value when the button is pushed
 #Advance the cycle one week
@@ -84,11 +84,12 @@ observeEvent(input$add_week, {
   }#End if
   
   
-  #Submit Claims
-  
-  
-  
-  
+  #Claims
+  #For each week, multiply the claimrate /52 times # of customers
+  #Record a random average claim amount.
+  temp_num_claims=rv$policy_df[rv$current_week,"total_customers"]*rnorm(1,claim_rate,600)/52
+  temp_new_claim_row=c(rv$current_week,temp_num_claims,rnorm(1,avg_claim_amount,100))
+  browser()
   rv$company_df=rv$company_df+1
   #rv$claims_df=rv$claims_df+1
 }) # End observeEvent
@@ -107,9 +108,6 @@ output$table=renderTable(rv$policy_df)
     x    <- faithful[, 2]
     bins <- seq(min(x), max(x), length.out = input$bins + 1)
     
-    # draw the histogram with the specified number of bins
-    #hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    #ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
     ggplot(rv$policy_df, aes(x=week,y=new_customers_added))+geom_line()
   })
   
@@ -119,11 +117,6 @@ output$table=renderTable(rv$policy_df)
     x    <- faithful[, 2]
     bins <- seq(min(x), max(x), length.out = input$bins + 1)
     
-    # draw the histogram with the specified number of bins
-    #hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    #plot(rv$company_df$week,rv$company_df$num_customers)
-    
-    #ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
     #ggplot(rv$company_df, aes(x=week,y=num_customers))+geom_line()
     ggplot(rv$claims_df,aes(x=week,y=num_claims)) +geom_line()
     #ggplot(rv$claims_df, aes(x=week,y=num_claims))+geom_line()
