@@ -61,10 +61,10 @@ claim_rate=1
 
 
 #create the reactive value object
-rv=reactiveValues( company_df=data.frame("week"=0, "dwp_received" = 0, "claims_paid"=0, "cash_balance" =0),
+rv=reactiveValues( financial_df=data.frame("week"=0, "premium_earned" = 0, "loss_paid"=0, "underwriting_gain" =0,"policyholder_surplus"=0 ),
                   policy_df=data.frame("week"=0,"policy_price"=0,"new_customers_added"=0,"total_customers"=0),
                   claims_df=data.frame("week"=0,"num_claims"=0,"avg_claim"=0,"total_claim_amount"=0),
-                  current_week=0
+                  current_week=0L
                   )#end reactive values
 
 #Do the work with the reactive value when the button is pushed
@@ -85,6 +85,10 @@ observeEvent(input$add_week, {
   }#End if
   #Add a row for the week even if you have no new customers.
   new_customer_row=c(rv$current_week,displayed_price,temp_customers_to_add,(temp_total_customers+temp_customers_to_add))
+  #Premiums are collected from customers active in the prior week
+  temp_premium_earned=sum(rv$policy_df$policy_price*rv$policy_df$new_customers_added)
+  
+  #After premium calculated, you can add the new custmers
   rv$policy_df=rbind(rv$policy_df,new_customer_row)
   
   
@@ -94,12 +98,17 @@ observeEvent(input$add_week, {
   temp_num_claims=as.integer(abs(rv$policy_df[rv$current_week,"total_customers"]*(rnorm(1,claim_rate,600)/52)))  # 600 is a lot of claims, need to bring it down when go live.
   temp_avg_claim_amount=rnorm(1,avg_claim_amount,100)
   temp_new_claim_row=c(rv$current_week,temp_num_claims,temp_avg_claim_amount,temp_num_claims*temp_avg_claim_amount)
+  temp_loss_paid=temp_num_claims*temp_avg_claim_amount
   rv$claims_df=rbind(rv$claims_df,temp_new_claim_row)
   #rv$company_df=rv$company_df+1
   
   #Financials
-  #DWP for the week - claims = surpluss
-#  temp_financial_row=(rv$week,rv$policy)
+  #premiums_earned-loss=underwriting_gain
+  financial_df=data.frame("week"=0, "premium_earned" = 0, "loss_paid"=0, "underwriting_gain" =0,"policyholder_surplus"=0 )
+  last_polciy_holder_surplus=rv$financial_df[rv$current_week,"policyholder_surplus"] #Get the last surplus and add it to current surplus - add 1 to the row.
+  temp_financial_row=c(rv$current_week,temp_premium_earned,temp_loss_paid,temp_premium_earned-temp_loss_paid,temp_premium_earned-temp_loss_paid+last_polciy_holder_surplus)
+  rv$financial_df=rbind(rv$financial_df,temp_financial_row)
+  browser()
   
   
 }) # End observeEvent
@@ -108,11 +117,10 @@ observeEvent(input$add_week, {
 #rv$company_data<- data.frame("num_customers" = c(7,9), "new_customers"=1:2, "new_claims" = c(0,1),"week"=(1:2))
 #observeEvent(input$add_week,{react_values$week=react_values$week+1})
   
-
 #output$table=renderTable(rv$company_df)
-output$table=renderTable(rv$policy_df)
+#output$table=renderTable(rv$policy_df)
 #output$table=renderTable(rv$claims_df)
-#output$table=renderTable(rv$company_df)
+output$table=renderTable(rv$financial_df)
 
 #Policy plot is total number policy holders and policy price history
   output$policy_plot <- renderPlot({
@@ -142,7 +150,7 @@ output$table=renderTable(rv$policy_df)
     # draw the histogram with the specified number of bins
     #hist(x, breaks = bins, col = 'darkgray', border = 'white')
     #ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
-    ggplot(rv$company_df, aes(x=week,y=num_customers))+geom_line()
+    ggplot(rv$finacial_df, aes(x=week,y=policyholder_surpluss))+geom_line()
     
     })
 
@@ -163,3 +171,6 @@ output$table=renderTable(rv$policy_df)
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
+#Reference
+#https://www.investopedia.com/terms/p/policyholder-surplus.asp
