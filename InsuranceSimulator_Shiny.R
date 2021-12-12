@@ -108,7 +108,7 @@ observeEvent(input$add_week, {
   last_polciy_holder_surplus=rv$financial_df[rv$current_week,"policyholder_surplus"] #Get the last surplus and add it to current surplus - add 1 to the row.
   temp_financial_row=c(rv$current_week,temp_premium_earned,temp_loss_paid,temp_premium_earned-temp_loss_paid,temp_premium_earned-temp_loss_paid+last_polciy_holder_surplus)
   rv$financial_df=rbind(rv$financial_df,temp_financial_row)
-  browser()
+  #browser()
   
   
 }) # End observeEvent
@@ -120,7 +120,7 @@ observeEvent(input$add_week, {
 #output$table=renderTable(rv$company_df)
 #output$table=renderTable(rv$policy_df)
 #output$table=renderTable(rv$claims_df)
-output$table=renderTable(rv$financial_df)
+#output$table=renderTable(rv$financial_df)
 
 #Policy plot is total number policy holders and policy price history
   output$policy_plot <- renderPlot({
@@ -150,7 +150,7 @@ output$table=renderTable(rv$financial_df)
     # draw the histogram with the specified number of bins
     #hist(x, breaks = bins, col = 'darkgray', border = 'white')
     #ggplot(company_data, aes(x=week,y=total_customers))+geom_line()
-    ggplot(rv$finacial_df, aes(x=week,y=policyholder_surpluss))+geom_line()
+    ggplot(rv$financial_df, aes(x=week,y=policyholder_surplus))+geom_line()
     
     })
 
