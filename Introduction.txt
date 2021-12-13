@@ -1,0 +1,7 @@
+Introduction
+The fundamental equation for an insurance carrier is: premimums > (average claim size / frequency of cliams) +underwriting costs.
+For this simulation the underwriting costs are neglected and the focus is on choosing a preimum price that is greater than the claims costs.  The average claim size is calculated around an average seed value as is the claim frequency.  The seed values are not known to the user however a rough range is provided for context.
+
+Example an average claim size of $600 and with an annual claim frequency of 1% per cusotmer will need premiums of  
+
+To prevent the user from raising the price too high, the customer has a target price (not disclosed) that they are willing to pay with some varition.  A higher price will get better financial ratios but lower DWP.  A lower price will get greater DWP as well as more customers but you may not be able to meet your claims obligations consistantly.  Some sessions may be financially successfull while others may not represent viable markets.
