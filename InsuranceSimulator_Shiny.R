@@ -9,13 +9,10 @@ ui <- fluidPage(
   titlePanel("Insurance Simulator"),
 
   
-  fluidRow(sliderInput("bins",
-                       "Number of bins:",
-                       min = 1,
-                       max = 50,
-                       value = 30),  
+  fluidRow(
            #Start off with higher price to get some customers
-           numericInput("monthly_price", "Monthly Policy Price:", 1000),
+           numericInput("annual_premium_input", "Enter the annual premium:", 1000),
+           actionButton("use_new_price", "Update Price"),
            actionButton("add_week", "Advance the simulation one week")
   ),
   
@@ -49,14 +46,15 @@ server <- function(input, output) {
 #  https://stackoverflow.com/questions/68405253/r-shiny-variable-increases-by-1-each-time-actionbutton-is-clicked
 
 #Variables - Policy
-target_policy_price=600 #This is what the customer is willing to pay, it has to be discovered
-displayed_price = 600 #What price is advertised to customer.  Will be controlled by user.
+target_policy_price=6 #This is what the customer is willing to pay, it has to be discovered
+target_policy_std=10
+displayed_price = 6 #What price is advertised to customer.  Will be controlled by user.
 num_customers_shopping=10 #How many customers are shopping for a policy?
 
 #Variables - Claims
-avg_claim_amount=1000
-claim_rate=1
-
+avg_claim_amount=600
+claim_rate=.01
+claim_std=100
 
 
 
@@ -64,11 +62,19 @@ claim_rate=1
 rv=reactiveValues( financial_df=data.frame("week"=0, "premium_earned" = 0, "loss_paid"=0, "underwriting_gain" =0,"policyholder_surplus"=0 ),
                   policy_df=data.frame("week"=0,"policy_price"=0,"new_customers_added"=0,"total_customers"=0),
                   claims_df=data.frame("week"=0,"num_claims"=0,"avg_claim"=0,"total_claim_amount"=0),
-                  current_week=0L
+                  current_week=0L,
+                  new_annual_premium=1000
                   )#end reactive values
 
 #Do the work with the reactive value when the button is pushed
 #Advance the cycle one week
+
+#Updating the price when button is pushed
+observeEvent(input$use_new_price,{
+  rv$new_annual_premium=as.numeric(input$annual_premium_input)
+})
+
+
 observeEvent(input$add_week, {
   rv$current_week=rv$current_week+1
   #rv$policy_df=rv$policy_df+1
@@ -76,9 +82,10 @@ observeEvent(input$add_week, {
   #shop for policy, only buy if less than target.
   #Add a loop to get mulitple customers in a week.
   temp_total_customers=sum(rv$policy_df$new_customers_added)
-  temp_customers_to_add=0
+  temp_customers_to_add=0 #This will be used when there is a loop to shop multiple customers each week.
+  temp_random_policy_target=abs(rnorm(1,target_policy_price,target_policy_std))
   
-  if (displayed_price<rnorm(1,target_policy_price,100)) #Create a normal distribution about the target price.
+  if (rv$new_annual_premium<temp_random_policy_target) #Create a normal distribution about the target price.
   {
     #Buy the policy, add a row
     temp_customers_to_add=1
@@ -96,7 +103,7 @@ observeEvent(input$add_week, {
   #For each week, multiply the claimrate /52 times # of customers
   #Record a random average claim amount.
   temp_num_claims=as.integer(abs(rv$policy_df[rv$current_week,"total_customers"]*(rnorm(1,claim_rate,600)/52)))  # 600 is a lot of claims, need to bring it down when go live.
-  temp_avg_claim_amount=rnorm(1,avg_claim_amount,100)
+  temp_avg_claim_amount=rnorm(1,avg_claim_amount,claim_std)
   temp_new_claim_row=c(rv$current_week,temp_num_claims,temp_avg_claim_amount,temp_num_claims*temp_avg_claim_amount)
   temp_loss_paid=temp_num_claims*temp_avg_claim_amount
   rv$claims_df=rbind(rv$claims_df,temp_new_claim_row)
@@ -108,7 +115,7 @@ observeEvent(input$add_week, {
   last_polciy_holder_surplus=rv$financial_df[rv$current_week,"policyholder_surplus"] #Get the last surplus and add it to current surplus - add 1 to the row.
   temp_financial_row=c(rv$current_week,temp_premium_earned,temp_loss_paid,temp_premium_earned-temp_loss_paid,temp_premium_earned-temp_loss_paid+last_polciy_holder_surplus)
   rv$financial_df=rbind(rv$financial_df,temp_financial_row)
-  #browser()
+  browser()
   
   
 }) # End observeEvent
@@ -131,8 +138,6 @@ observeEvent(input$add_week, {
   #Claims output is number of claims in week and average value of those claims.
   output$claims_plot <- renderPlot({
     # generate bins based on input$bins from ui.R
-    x    <- faithful[, 2]
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
     
     #ggplot(rv$company_df, aes(x=week,y=num_customers))+geom_line()
     ggplot(rv$claims_df,aes(x=week,y=num_claims)) +geom_line()
@@ -144,8 +149,6 @@ observeEvent(input$add_week, {
   
   output$financial_plot <- renderPlot({
     # generate bins based on input$bins from ui.R
-    x    <- faithful[, 2]
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
     
     # draw the histogram with the specified number of bins
     #hist(x, breaks = bins, col = 'darkgray', border = 'white')
@@ -158,8 +161,6 @@ observeEvent(input$add_week, {
   
   output$metrics_plot <- renderPlot({
     # generate bins based on input$bins from ui.R
-    x    <- faithful[, 2]
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
     
     # draw the histogram with the specified number of bins
     #hist(x, breaks = bins, col = 'darkgray', border = 'white')
