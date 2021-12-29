@@ -11,7 +11,7 @@ ui <- fluidPage(
   
   fluidRow(
            #Start off with higher price to get some customers
-           numericInput("annual_premium_input", "Enter the annual premium:", 6),
+           numericInput("annual_premium_input", "Enter the annual premium ($):", 1000),
            actionButton("use_new_price", "Update Price"),
            actionButton("add_week", "Advance the simulation one week")
   ),
@@ -42,20 +42,20 @@ fluidRow(column(12, tableOutput("table"))), #end fluid row
 
 #**************************Server **********************************************
 # Define server logic required to draw a histogram
-server <- function(input, output) {
+server <- function(input, output, session) {
 #  https://stackoverflow.com/questions/68405253/r-shiny-variable-increases-by-1-each-time-actionbutton-is-clicked
 
 #Variables - Policy
-target_policy_price=6 #This is what the customer is willing to pay, it has to be discovered
-target_policy_std=10
+target_policy_price=100 #This is what the customer is willing to pay, it has to be discovered
+target_policy_std=20
 displayed_price = 6 #What price is advertised to customer.  Will be controlled by user.
 num_customers_shopping=10 #How many customers are shopping for a policy?
 
 #Variables - Claims
 avg_claim_amount=600
 claim_rate=.01
-claim_std=100
-
+claim_rate_std=7
+claim_std=10
 
 
 #create the reactive value object
@@ -63,7 +63,7 @@ rv=reactiveValues( financial_df=data.frame("week"=0, "premium_earned" = 0, "loss
                   policy_df=data.frame("week"=0,"policy_price"=0,"new_customers_added"=0,"total_customers"=0),
                   claims_df=data.frame("week"=0,"num_claims"=0,"avg_claim"=0,"total_claim_amount"=0),
                   current_week=0L,
-                  new_annual_premium=1000
+                  new_annual_premium=1000 #Need to fix this so it pulls the origional value from the annual premium
                   )#end reactive values
 
 #Do the work with the reactive value when the button is pushed
@@ -74,8 +74,10 @@ observeEvent(input$use_new_price,{
   rv$new_annual_premium=as.numeric(input$annual_premium_input)
 })
 
-
-observeEvent(input$add_week, {
+observe ({
+#observe(input$add_week, {
+  invalidateLater(500)  #1000 miliseconds equals 1 second
+  isolate({
   rv$current_week=rv$current_week+1
   #rv$policy_df=rv$policy_df+1
 
@@ -102,7 +104,7 @@ observeEvent(input$add_week, {
   #Claims
   #For each week, multiply the claimrate /52 times # of customers
   #Record a random average claim amount.
-  temp_num_claims=as.integer(abs(rv$policy_df[rv$current_week,"total_customers"]*(rnorm(1,claim_rate,600)/52)))  # 600 is a lot of claims, need to bring it down when go live.
+  temp_num_claims=as.integer(abs(rv$policy_df[rv$current_week,"total_customers"]*(rnorm(1,claim_rate,claim_rate_std)/52)))  #Not sure if this is firing enough
   temp_avg_claim_amount=rnorm(1,avg_claim_amount,claim_std)
   temp_new_claim_row=c(rv$current_week,temp_num_claims,temp_avg_claim_amount,temp_num_claims*temp_avg_claim_amount)
   temp_loss_paid=temp_num_claims*temp_avg_claim_amount
@@ -115,9 +117,10 @@ observeEvent(input$add_week, {
   last_polciy_holder_surplus=rv$financial_df[rv$current_week,"policyholder_surplus"] #Get the last surplus and add it to current surplus - add 1 to the row.
   temp_financial_row=c(rv$current_week,temp_premium_earned,temp_loss_paid,temp_premium_earned-temp_loss_paid,temp_premium_earned-temp_loss_paid+last_polciy_holder_surplus)
   rv$financial_df=rbind(rv$financial_df,temp_financial_row)
-  browser()
   
+  #browser()
   
+}) #End isolate
 }) # End observeEvent
 
 
