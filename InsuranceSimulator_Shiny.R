@@ -11,7 +11,7 @@ ui <- fluidPage(
   
   fluidRow(
            #Start off with higher price to get some customers
-           numericInput("annual_premium_input", "Enter the annual premium:", 1000),
+           numericInput("annual_premium_input", "Enter the annual premium:", 6),
            actionButton("use_new_price", "Update Price"),
            actionButton("add_week", "Advance the simulation one week")
   ),
@@ -95,7 +95,7 @@ observeEvent(input$add_week, {
   #Premiums are collected from customers active in the prior week
   temp_premium_earned=sum(rv$policy_df$policy_price*rv$policy_df$new_customers_added)
   
-  #After premium calculated, you can add the new custmers
+  #After premium calculated, you can add the new customers
   rv$policy_df=rbind(rv$policy_df,new_customer_row)
   
   
