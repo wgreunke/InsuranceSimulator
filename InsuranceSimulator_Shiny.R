@@ -46,17 +46,18 @@ server <- function(input, output, session) {
 #  https://stackoverflow.com/questions/68405253/r-shiny-variable-increases-by-1-each-time-actionbutton-is-clicked
 
 #Variables - Policy
-target_policy_price=100 #This is what the customer is willing to pay, it has to be discovered
-target_policy_std=30
-displayed_price = 6 #What price is advertised to customer.  Will be controlled by user.
-num_customers_shopping=10 #How many customers are shopping for a policy?
-num_customer_shopping_std=1
+target_policy_price=100.0001 #This is what the customer is willing to pay (annual), it has to be discovered
+target_policy_std=0
+#displayed_price = 6 #What price is advertised to customer.  Will be controlled by user.
+#num_customers_shopping=100 #How many customers are shopping for a policy?
+#num_customer_shopping_std=100
+trials_per_week=1000
 
 #Variables - Claims
-avg_claim_amount=350
-claim_rate=1
-claim_rate_std=2
-claim_amount_std=100
+claim_rate=.02
+claim_rate_std=0
+avg_claim_amount=target_policy_price/claim_rate
+claim_amount_std=1
 
 
 #create the reactive value object
@@ -85,19 +86,24 @@ observe ({
   #shop for policy, only buy if less than target.
   #Add a loop to get mulitple customers in a week.
   
-  for (i in 1:10)
-  {
-    temp_total_customers=sum(rv$policy_df$new_customers_added)
-    temp_customers_to_add=0 #This will be used when there is a loop to shop multiple customers each week.
-    temp_random_policy_target=abs(rnorm(1,target_policy_price,target_policy_std))
   
+  #Premiums are collected from customers active in the prior week
+  temp_premium_earned=sum(rv$policy_df$policy_price*rv$policy_df$new_customers_added/52)
+  
+  temp_customers_to_add=0 #This will be used when there is a loop to shop multiple customers each week.
+  for (i in 1:trials_per_week)
+  {
+    temp_random_policy_target=abs(rnorm(1,target_policy_price,target_policy_std))
+    temp_total_customers=sum(rv$policy_df$new_customers_added)
+    
     if (rv$new_annual_premium<temp_random_policy_target) #Create a normal distribution about the target price.
       {
       #Buy the policy, add a row
       temp_customers_to_add=temp_customers_to_add+1 # Increment the counter for each signup
       }#End if
   } #end for
-
+  print(temp_random_policy_target)
+  
     #For a given week you will add the number of customers that signed up and each will have the same policy price.
   new_customer_row=c(rv$current_week,rv$new_annual_premium,temp_customers_to_add,(temp_total_customers+temp_customers_to_add))
   #May be problems if there are no customers for the week.  If so may have to add blank row for the week.
@@ -110,10 +116,12 @@ observe ({
   #Record a random average claim amount.
   #Use the max number of customers colum for total customer count
   #temp_num_claims=as.integer(abs(rv$policy_df[rv$current_week,"total_customers"]*(rnorm(1,claim_rate,claim_rate_std)/52)))  #Not sure if this is firing enough
-  temp_num_claims=as.integer(abs(max(rv$policy_df[,"total_customers"])*(rnorm(1,claim_rate,claim_rate_std)/52)))  #Not sure if this is firing enough
+  temp_num_claims=round(abs(max(rv$policy_df[,"total_customers"])*(rnorm(1,claim_rate,claim_rate_std)))/52)  #Not sure if this is firing enough
   
   temp_avg_claim_amount=rnorm(1,avg_claim_amount,claim_amount_std)
-  temp_new_claim_row=c(rv$current_week,temp_num_claims,temp_avg_claim_amount,temp_num_claims*temp_avg_claim_amount)
+
+  #Only policyholders who were active last week are eligble to submit a claim
+  temp_new_claim_row=c(rv$current_week-1,temp_num_claims,temp_avg_claim_amount,temp_num_claims*temp_avg_claim_amount)
   temp_loss_paid=temp_num_claims*temp_avg_claim_amount
   rv$claims_df=rbind(rv$claims_df,temp_new_claim_row)
   #rv$company_df=rv$company_df+1
@@ -121,14 +129,12 @@ observe ({
   #Financials
   #premiums_earned-loss=underwriting_gain
   #for reference - financial_df=data.frame("week"=0, "premium_earned" = 0, "loss_paid"=0, "underwriting_gain" =0,"policyholder_surplus"=0 )
-  #Premiums are collected from customers active in the prior week
-  temp_premium_earned=sum(rv$policy_df$policy_price*rv$policy_df$new_customers_added/52)
   
   last_polciy_holder_surplus=rv$financial_df[rv$current_week,"policyholder_surplus"] #Get the last surplus and add it to current surplus - add 1 to the row.
-  temp_financial_row=c(rv$current_week,temp_premium_earned,temp_loss_paid,temp_premium_earned-temp_loss_paid,temp_premium_earned-temp_loss_paid+last_polciy_holder_surplus)
+  temp_financial_row=c(rv$current_week-1,temp_premium_earned,temp_loss_paid,temp_premium_earned-temp_loss_paid,temp_premium_earned-temp_loss_paid+last_polciy_holder_surplus)
   rv$financial_df=rbind(rv$financial_df,temp_financial_row)
   
-  #browser()
+  browser()
   
 }) #End isolate
 }) # End observeEvent
