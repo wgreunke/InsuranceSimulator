@@ -11,7 +11,7 @@ ui <- fluidPage(
   
   fluidRow(
            #Start off with higher price to get some customers
-           numericInput("annual_premium_input", "Enter the annual premium - Start with 100:", 1000),
+           numericInput("annual_premium_input", "Enter the annual premium - Start with 100:", 100),
            actionButton("use_new_price", "Update Price")
            #actionButton("add_week", "Advance the simulation one week")
   ),
@@ -87,9 +87,7 @@ observe ({
   #Add a loop to get mulitple customers in a week.
   
   
-  #Premiums are collected from customers active in the prior week
-  temp_premium_earned=sum(rv$policy_df$policy_price*rv$policy_df$new_customers_added/52)
-  
+ 
   temp_customers_to_add=0 #This will be used when there is a loop to shop multiple customers each week.
   for (i in 1:trials_per_week)
   {
@@ -114,14 +112,18 @@ observe ({
   #Claims
   #For each week, multiply the claimrate /52 times # of customers
   #Record a random average claim amount.
-  #Use the max number of customers colum for total customer count
+  #Use the previous weeks customers when calculating claims
   #temp_num_claims=as.integer(abs(rv$policy_df[rv$current_week,"total_customers"]*(rnorm(1,claim_rate,claim_rate_std)/52)))  #Not sure if this is firing enough
-  temp_num_claims=round(abs(max(rv$policy_df[,"total_customers"])*(rnorm(1,claim_rate,claim_rate_std)))/52)  #Not sure if this is firing enough
+  #temp_num_claims=round(abs(max(rv$policy_df[,"total_customers"])*(rnorm(1,claim_rate,claim_rate_std)))/52)  #Not sure if this is firing enough
+  
+  #Hack, the week is one less than the row of DF so need to add 1 to get current row.
+  temp_num_claims=abs(rv$policy_df[rv$current_week+1,"total_customers"])*(rnorm(1,claim_rate,claim_rate_std))/52  #Not sure if this is firing enough
   
   temp_avg_claim_amount=rnorm(1,avg_claim_amount,claim_amount_std)
 
-  #Only policyholders who were active last week are eligble to submit a claim
-  temp_new_claim_row=c(rv$current_week-1,temp_num_claims,temp_avg_claim_amount,temp_num_claims*temp_avg_claim_amount)
+  
+  #Only policyholders who were active last week are eligible to submit a claim
+  temp_new_claim_row=c(rv$current_week,temp_num_claims,temp_avg_claim_amount,temp_num_claims*temp_avg_claim_amount)
   temp_loss_paid=temp_num_claims*temp_avg_claim_amount
   rv$claims_df=rbind(rv$claims_df,temp_new_claim_row)
   #rv$company_df=rv$company_df+1
@@ -129,9 +131,12 @@ observe ({
   #Financials
   #premiums_earned-loss=underwriting_gain
   #for reference - financial_df=data.frame("week"=0, "premium_earned" = 0, "loss_paid"=0, "underwriting_gain" =0,"policyholder_surplus"=0 )
+
+  #Premiums and claims are calculated at the end of the month.
+  temp_premium_earned=sum(rv$policy_df$policy_price*rv$policy_df$new_customers_added/52)
   
   last_polciy_holder_surplus=rv$financial_df[rv$current_week,"policyholder_surplus"] #Get the last surplus and add it to current surplus - add 1 to the row.
-  temp_financial_row=c(rv$current_week-1,temp_premium_earned,temp_loss_paid,temp_premium_earned-temp_loss_paid,temp_premium_earned-temp_loss_paid+last_polciy_holder_surplus)
+  temp_financial_row=c(rv$current_week,temp_premium_earned,temp_loss_paid,temp_premium_earned-temp_loss_paid,temp_premium_earned-temp_loss_paid+last_polciy_holder_surplus)
   rv$financial_df=rbind(rv$financial_df,temp_financial_row)
   
   browser()
